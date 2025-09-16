@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 
 import { Button } from "./ui/button";
 import { DarkModeToggle } from "./DarkModeToggle";
+import SearchInput from "./SearchInput";
 
 function Header() {
   return (
@@ -22,7 +23,7 @@ function Header() {
                 Learn Hub
               </span>
             </Link>
-            {/* <SearchInput /> */}
+            <SearchInput />
           </div>
 
           {/* Right */}
