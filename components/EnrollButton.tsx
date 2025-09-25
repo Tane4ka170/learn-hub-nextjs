@@ -1,0 +1,73 @@
+"use client";
+
+import { useUser } from "@clerk/nextjs";
+import { CircleCheck } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+
+function EnrollButton({
+  courseId,
+  isEnrolled,
+}: {
+  courseId: string;
+  isEnrolled: boolean;
+}) {
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const { router } = useRouter();
+  const { isPending, startTransition } = useTransition();
+
+  const handleEnroll = async (courseId: string) => {
+    startTransition(async () => {
+      try {
+        const userId = user?.id;
+        if (!userId) return;
+
+        const { url } = await createStripeCheckout(courseId, userId);
+        if (url) {
+          router.push(url);
+        }
+      } catch (error) {
+        console.error("Error in HandleError", error);
+        throw new Error("Failed to create checkout session");
+      }
+    });
+  };
+
+  if (isEnrolled) {
+    return (
+      <Link
+        prefetch={false}
+        href={`/dashboard/courses/${courseId}`}
+        className="w-full rounded-lg px-6 py-3 font-medium bg-gradient-to-r from-green-200 to-emerald-950 text-white hover:from-green-800 hover:to-emerald-500 transition-all duration-300 h-12 flex items-center justify-center gap-2 group"
+      >
+        <span>Access Course</span>
+        <CircleCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+      </Link>
+    );
+  }
+  return (
+    <button
+      onClick={() => handleEnroll(courseId)}
+      className={`w-full rounded-lg px-6 py-3 font-medium transition-all duration-300 ease-in-out relative h-12 ${isPending || user?.id ? "bg-gray-700 text-gray-300 cursor-not-allowed hover:scale-100" : "bg-white text-black hover:scale-105 hover:shadow-lg hover:shadow-black/35"}`}
+      disabled={!user?.id || isPending}
+    >
+      {!user?.id ? (
+        <span className={`${isPending ? "opacity-0" : "opacity-100"}`}>
+          Sign In to Enroll
+        </span>
+      ) : (
+        <span className={`${isPending ? "opacity-0" : "opacity-100"}`}>
+          Enroll Now
+        </span>
+      )}
+      {isPending && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-100 rounded-full animate-spin" />
+        </div>
+      )}
+    </button>
+  );
+}
+
+export default EnrollButton;
