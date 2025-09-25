@@ -1,5 +1,7 @@
+import EnrollButton from "@/components/EnrollButton";
 import getCourseBySlug from "@/sanity/lib/courses/getCourseBySlug";
 import { urlFor } from "@/sanity/lib/image";
+import { isEnrolledInCourse } from "@/sanity/lib/student/isEnrolledInCourse";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import Image from "next/image";
@@ -23,6 +25,11 @@ async function CoursePage({ params }: CoursePageProps) {
       </div>
     );
   }
+
+  const isEnrolled =
+    userId && course?._id
+      ? await isEnrolledInCourse(userId, course._id)
+      : false;
   return (
     <div className="min-h-screen bg-background">
       {/* Hero section */}
@@ -65,7 +72,7 @@ async function CoursePage({ params }: CoursePageProps) {
               <div className="text-3xl font-bold text-white mb-4">
                 {course.price === 0 ? "Free" : `$${course.price}`}
               </div>
-              {/* <EnrollButton courseId={course._id} isEnrolled={isEnrolled} /> */}
+              <EnrollButton courseId={course._id} isEnrolled={isEnrolled} />
             </div>
           </div>
         </div>
