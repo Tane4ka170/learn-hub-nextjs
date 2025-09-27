@@ -57,7 +57,7 @@ async function CoursePage({ params }: CoursePageProps) {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <span className="px-3 py-1 bg-white/90 text-white rounded-full text-sm font-medium backdrop-blur-sm">
+                <span className="px-3 py-1 bg-white/35 text-white rounded-full text-sm font-medium backdrop-blur-sm">
                   {course.category?.name || "Miscellaneous"}
                 </span>
               </div>
@@ -104,7 +104,7 @@ async function CoursePage({ params }: CoursePageProps) {
                           className="p-4 hover:bg-muted/25 transition-colors"
                         >
                           <div className="flex items-center gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/75 text-primary flex items-center justify-center font-medium">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/65 text-primary flex items-center justify-center font-medium">
                               {lessonIndex + 1}
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
