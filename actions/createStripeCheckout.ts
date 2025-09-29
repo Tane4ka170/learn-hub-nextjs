@@ -1,52 +1,40 @@
 "use server";
 
-import baseUrl from "@/lib/baseUrl";
+import Stripe from "stripe"; // 🔑 імпорт типів
 import stripe from "@/lib/stripe";
-import getCourseById from "@/sanity/lib/courses/getCourseById";
+import baseUrl from "@/lib/baseUrl";
 
 import { urlFor } from "@/sanity/lib/image";
-import { createEnrollment } from "@/sanity/lib/student/createEnrollment";
+import getCourseById from "@/sanity/lib/courses/getCourseById";
 import { createStudentIfNotExists } from "@/sanity/lib/student/createStudentIfNotExists";
-
 import { clerkClient } from "@clerk/nextjs/server";
+import { createEnrollment } from "@/sanity/lib/student/createEnrollment";
 
 export async function createStripeCheckout(courseId: string, userId: string) {
   try {
-    // 1. Query course details from Sanity
+    // 1. Отримати курс з Sanity
     const course = await getCourseById(courseId);
     const clerkUser = await (await clerkClient()).users.getUser(userId);
+
     const { emailAddresses, firstName, lastName, imageUrl } = clerkUser;
     const email = emailAddresses[0]?.emailAddress;
 
-    if (!emailAddresses || !email) {
-      throw new Error("User details not found");
-    }
+    if (!email) throw new Error("User email not found");
+    if (!course) throw new Error("Course not found");
 
-    if (!course) {
-      throw new Error("Course not found");
-    }
-
-    // mid step - create a user in sanity if it doesn't exist
+    // 2. Створити студента в Sanity, якщо його немає
     const user = await createStudentIfNotExists({
       clerkId: userId,
-      email: email || "",
+      email,
       firstName: firstName || email,
       lastName: lastName || "",
       imageUrl: imageUrl || "",
     });
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found in Sanity");
 
-    // 2. Validate course data and prepare price for Stripe
-    if (!course.price && course.price !== 0) {
-      throw new Error("Course price is not set");
-    }
-    const priceInCents = Math.round(course.price * 100);
-
-    // if course is free, create enrollment and redirect to course page (BYPASS STRIPE CHECKOUT)
-    if (priceInCents === 0) {
+    // 3. Якщо курс безкоштовний – одразу створюємо enrollment
+    if (!course.price || course.price === 0) {
       await createEnrollment({
         studentId: user._id,
         courseId: course._id,
@@ -54,42 +42,40 @@ export async function createStripeCheckout(courseId: string, userId: string) {
         amount: 0,
       });
 
-      return { url: `/courses/${course.slug?.current}` };
+      return { url: `/courses/${course.slug?.current ?? courseId}` };
     }
 
+    // 4. Підготовка Stripe Checkout Session
+    const priceInCents = Math.round(course.price * 100);
     const { title, description, image, slug } = course;
 
-    if (!title || !description || !image || !slug) {
-      throw new Error("Course data is incomplete");
-    }
-
-    // 3. Create and configure Stripe Checkout Session with course details
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: "payment",
       line_items: [
         {
           price_data: {
             currency: "usd",
             product_data: {
-              name: title,
-              description: description,
-              images: [urlFor(image).url() || ""],
+              name: title || "Untitled course",
+              description: description || "",
+              images: image ? [urlFor(image).url() || ""] : [],
             },
             unit_amount: priceInCents,
           },
           quantity: 1,
         },
       ],
-      mode: "payment",
-      success_url: `${baseUrl}/courses/${slug.current}`,
-      cancel_url: `${baseUrl}/courses/${slug.current}?canceled=true`,
+      success_url: `${baseUrl}/courses/${slug?.current ?? courseId}?success=true`,
+      cancel_url: `${baseUrl}/courses/${slug?.current ?? courseId}?canceled=true`,
       metadata: {
         courseId: course._id,
-        userId: userId,
+        userId,
       },
-    });
+    };
 
-    // 4. Return checkout session URL for client redirect
-    return { url: session.url };
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    return { url: session.url! };
   } catch (error) {
     console.error("Error in createStripeCheckout:", error);
     throw new Error("Failed to create checkout session");
