@@ -8,15 +8,20 @@ import Image from "next/image";
 import Link from "next/link";
 
 interface CoursePageProps {
-  params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ enrolled?: string }>;
+  params: Promise<{
+    slug: string;
+  }>;
 }
 
-async function CoursePage({ params, searchParams }: CoursePageProps) {
+export default async function CoursePage({ params }: CoursePageProps) {
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
   const { userId } = await auth();
-  const { enrolled } = await searchParams;
+
+  const isEnrolled =
+    userId && course?._id
+      ? await isEnrolledInCourse(userId, course._id)
+      : false;
 
   if (!course) {
     return (
@@ -26,11 +31,6 @@ async function CoursePage({ params, searchParams }: CoursePageProps) {
     );
   }
 
-  const isEnrolled =
-    enrolled === "true" ||
-    (userId && course?._id
-      ? await isEnrolledInCourse(userId, course._id)
-      : false);
   return (
     <div className="min-h-screen bg-background">
       {/* Hero section */}
@@ -164,5 +164,3 @@ async function CoursePage({ params, searchParams }: CoursePageProps) {
     </div>
   );
 }
-
-export default CoursePage;
